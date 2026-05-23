@@ -1,0 +1,106 @@
+:root {
+  --bg-main: #f2d9a0;
+  --bg-card: #c8832a;
+  --bg-card-hover: #b8731a;
+  --bg-card-border: #7a4f10;
+  --bg-navbar: #e8c880;
+  --bg-search: #b8d8f0;
+  --bg-filter: #88c8e8;
+  --bg-filter-hover: #6ab8d8;
+  --color-text-primary: #2a1500;
+  --color-text-secondary: #5a3010;
+  --color-accent: #ff6b00;
+  --color-star: #ffd700;
+  --color-heart: #e84040;
+  --color-heart-empty: #8b5a1a;
+  --color-white: #fff8ee;
+  --color-green: #2a7a2a;
+  --color-red: #b91c1c;
+  --color-badge: #2a1500;
+  --radius-card: 16px;
+  --radius-sm: 8px;
+  --shadow-card: 0 4px 0 #7a4f10;
+  --shadow-card-hover: 0 6px 0 #5a3010;
+  --font-pixel: "Press Start 2P", monospace;
+  --font-body: "Nunito", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(200, 131, 42, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 200, 100, 0.1) 0%, transparent 40%);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-card);
+  border-radius: 4px;
+}
+
+/* Pixel art borders utility */
+.pixel-border {
+  image-rendering: pixelated;
+  border-style: solid;
+  border-width: 3px;
+  border-color: var(--bg-card-border);
+}
+
+/* Animation keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-star {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes banner-slide {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Product cards staggered animation */
+.product-card-anim {
+  animation: fadeInUp 0.4s ease both;
+}
+.product-card-anim:nth-child(1) { animation-delay: 0.05s; }
+.product-card-anim:nth-child(2) { animation-delay: 0.1s; }
+.product-card-anim:nth-child(3) { animation-delay: 0.15s; }
+.product-card-anim:nth-child(4) { animation-delay: 0.2s; }
+.product-card-anim:nth-child(5) { animation-delay: 0.25s; }
+.product-card-anim:nth-child(6) { animation-delay: 0.3s; }
