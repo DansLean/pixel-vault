@@ -12,6 +12,7 @@ interface AuthContextType {
   toggleFavorite: (productId: number, isFavorite: boolean) => Promise<void>;
   addToCart: (productId: number) => void;
   removeFromCart: (productId: number) => void;
+  clearCart: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,12 +93,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem('cart');
+  };
+
   return (
     <AuthContext.Provider value={{ 
       isLoggedIn, login, logout, 
       userId,
       toggleFavorite,
-      cart, addToCart, removeFromCart
+      cart, addToCart, removeFromCart,
+      clearCart
     }}>
       {children}
     </AuthContext.Provider>

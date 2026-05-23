@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PRODUCTS, Product } from "@/lib/mock-data";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Modal from "@/components/Modal";
 
 const CartItem = ({ product, removeFromCart }: { product: Product, removeFromCart: (id: number) => void }) => {
   return (
@@ -23,11 +26,23 @@ const CartItem = ({ product, removeFromCart }: { product: Product, removeFromCar
 };
 
 export default function CartPage() {
-  const { cart, removeFromCart } = useAuth();
+  const { cart, removeFromCart, clearCart } = useAuth();
+  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const cartProducts: Product[] = PRODUCTS.filter(product => cart.includes(product.id));
   
   const subtotal = cartProducts.reduce((sum, product) => sum + product.price, 0);
+
+  const handleCheckout = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    clearCart();
+    router.push('/');
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-main)" }}>
@@ -58,20 +73,24 @@ export default function CartPage() {
                   <span>Total</span>
                   <span>{subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
                 </div>
-                <button style={{
-                  width: '100%',
-                  backgroundColor: "var(--color-green)",
-                  color: "var(--color-white)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: "16px",
-                  fontWeight: 800,
-                  padding: "14px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 0 #1a5a1a",
-                  marginTop: '24px',
-                }}>
+                <button 
+                  type="button"
+                  onClick={handleCheckout}
+                  style={{
+                    width: '100%',
+                    backgroundColor: "var(--color-green)",
+                    color: "var(--color-white)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "16px",
+                    fontWeight: 800,
+                    padding: "14px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 0 #1a5a1a",
+                    marginTop: '24px',
+                  }}
+                >
                   Finalizar Compra
                 </button>
               </div>
@@ -102,6 +121,49 @@ export default function CartPage() {
           </div>
         )}
       </main>
+
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-green)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '48px',
+            boxShadow: '0 4px 0 #1a5a1a',
+          }}>
+            ✓
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '18px', color: 'var(--color-text-primary)'}}>
+            Compra Finalizada!
+          </h2>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: 600, lineHeight: 1.5 }}>
+            Seu pedido foi processado com sucesso. Como este é um ambiente de simulação, nenhum valor foi cobrado.
+          </p>
+          <button 
+            onClick={handleCloseModal}
+            style={{
+              backgroundColor: "var(--color-text-primary)",
+              color: "var(--color-white)",
+              fontFamily: "var(--font-body)",
+              fontSize: "15px",
+              fontWeight: 800,
+              padding: "12px 24px",
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 4px 0 rgba(0,0,0,0.3)",
+              marginTop: '16px',
+            }}
+          >
+            Voltar para a Loja
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
