@@ -8,6 +8,7 @@ import FormSelect from "@/components/FormSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCategories, getLicenseTypes, createAsset } from "@/services/api";
 import type { CategoryRead, LicenseTypeRead, AssetCreate } from "@/services/api-types";
+import ImageUploader, { AssetPictureInput } from "@/components/ImageUploader";
 
 // Helper to transform license object into rules
 const getLicenseRules = (license: LicenseTypeRead | undefined) => {
@@ -18,18 +19,18 @@ const getLicenseRules = (license: LicenseTypeRead | undefined) => {
     const cannotDo = [];
 
     if (license.can_use_commercially) canDo.push("Usar em projetos comerciais");
-    else cannotDo.push("Usar em projetos comerciais");
+    else cannotDo.push("Uso comercial não permitido");
 
     if (license.can_modify) canDo.push("Modificar o asset");
-    else cannotDo.push("Modificar o asset");
+    else cannotDo.push("Modificação não permitida");
     
     if (license.requires_attribution) canDo.push("Requer atribuição ao autor original");
     
     if (license.can_resell) canDo.push("Revender o asset (verificar termos)");
-    else cannotDo.push("Revender o asset isoladamente");
+    else cannotDo.push("Não pode revender o asset isoladamente");
 
     if (license.can_sublicense) canDo.push("Sublicenciar a terceiros (verificar termos)");
-    else cannotDo.push("Sublicenciar a terceiros");
+    else cannotDo.push("Não pode sublicenciar a terceiros");
     
     return { canDo, cannotDo };
 }
@@ -46,6 +47,7 @@ export default function AddAssetPage() {
     license_type_id: "" as string | number,
   });
 
+  const [pictures, setPictures] = useState<AssetPictureInput[]>([]);
   const [licenses, setLicenses] = useState<LicenseTypeRead[]>([]);
   const [categories, setCategories] = useState<CategoryRead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +96,10 @@ export default function AddAssetPage() {
         alert("Você precisa estar logado para criar um asset.");
         return;
     }
+    if (pictures.length === 0) {
+        alert("Você precisa adicionar pelo menos uma imagem para o asset.");
+        return;
+    }
     setIsSubmitting(true);
     
     const payload: AssetCreate = {
@@ -103,12 +109,13 @@ export default function AddAssetPage() {
       license_type_id: Number(formData.license_type_id),
       category_id: Number(formData.category_id) || null,
       user_id: userId,
+      pictures: pictures,
     };
 
     try {
         const newAsset = await createAsset(payload);
         alert("Asset criado com sucesso!");
-        router.push('/'); // Redirect to homepage
+        router.push(`/produto/${newAsset.id}`);
     } catch (error) {
         console.error("Failed to create asset", error);
         alert("Falha ao criar o asset. Tente novamente.");
@@ -158,21 +165,22 @@ export default function AddAssetPage() {
             <FormSelect
               name="category_id"
               label="Categorias"
-              options={categories.map(c => ({ value: c.id, label: c.name }))}
+              options={[{ value: "", label: "Selecione uma categoria" }, ...categories.map(c => ({ value: c.id, label: c.name }))]}
               value={String(formData.category_id)}
               onChange={handleInputChange}
             />
             <FormInput name="description" label="Descrição" value={formData.description} onChange={handleInputChange} multiline={true} />
-            <FormInput name="price" label="Preço" type="number" value={formData.price} onChange={handleInputChange} />
+            <FormInput name="price" label="Preço" type="number" value={formData.price} onChange={handleInputChange} required />
             <FormSelect
               name="license_type_id"
               label="Licenciamento"
               options={licenses.map(l => ({ value: l.id, label: l.name }))}
               value={String(formData.license_type_id)}
               onChange={handleInputChange}
+              required
             />
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px", background: 'var(--bg-card)', padding: '16px', borderRadius: 'var(--radius-card)', border: '2px solid var(--bg-card-border)' }}>
               <div>
                 <h3 style={{ fontFamily: "var(--font-body)", fontWeight: 700, color: "var(--color-green)", marginBottom: "4px" }}>
                   Pode fazer:
@@ -194,19 +202,10 @@ export default function AddAssetPage() {
 
           {/* Right Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div>
-              <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "8px", display: "block" }}>
-                Fotos
-              </label>
-              <div style={{ width: "100%", paddingTop: "56.25%", backgroundColor: "var(--bg-card)", border: "3px dashed var(--bg-card-border)", borderRadius: "var(--radius-card)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "var(--bg-card-border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-primary)", fontSize: "30px", fontWeight: "bold" }}>
-                    +
-                  </div>
-                </div>
-              </div>
-            </div>
-            <FormInput label="Link do Youtube" />
+            
+            <ImageUploader onUpload={setPictures} />
+
+            <FormInput label="Link do Youtube (opcional)" />
 
             <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
               <button
