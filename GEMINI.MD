@@ -2,49 +2,54 @@
 
 ## 1. Conceito do Projeto
 
-Este projeto é a Prova de Conceito (POC) do frontend para o "Pixel Vault", um marketplace de assets para desenvolvedores de jogos independentes. A concepção do projeto, detalhada em um artigo acadêmico, visa resolver um problema central para desenvolvedores indie: a fragmentação de assets em diversas plataformas e, mais importante, a ambiguidade e complexidade das licenças de uso.
-
-O objetivo principal é oferecer um catálogo centralizado de assets onde as permissões de licença (uso comercial, modificação, atribuição, etc.) são apresentadas de forma visualmente clara e de fácil compreensão.
+Este projeto é a Prova de Conceito (POC) do frontend para o "Pixel Vault", um marketplace de assets para desenvolvedores de jogos independentes. O objetivo principal é oferecer um catálogo centralizado de assets onde as permissões de licença são apresentadas de forma clara e de fácil compreensão, resolvendo um problema central para desenvolvedores indie.
 
 ## 2. Arquitetura e Tecnologias
 
-*   **Framework**: Next.js com App Router.
+*   **Framework**: Next.js com App Router e Turbopack.
 *   **Linguagem**: TypeScript.
-*   **Estilização**: CSS-in-JS (inline styles) utilizando variáveis de CSS definidas em `app/globals.css` para manter um tema consistente.
-*   **Gerenciamento de Estado Global**: O estado da UI, como status de login e itens no carrinho, é gerenciado via Contexto React (`contexts/AuthContext.tsx`) e persistido no `localStorage`.
-*   **Fonte de Dados**: O projeto está em um **estado de transição**. Originalmente usando apenas dados mockados (`lib/mock-data.ts`), agora ele se comunica com um backend real (Python/FastAPI em `http://localhost:5000`) para funcionalidades-chave, enquanto outras partes ainda dependem dos dados antigos.
+*   **Estilização**: CSS-in-JS (inline styles) e variáveis de CSS em `app/globals.css`.
+*   **Gerenciamento de Estado Global**: O estado da sessão do usuário é gerenciado pelo `AuthContext` (`contexts/AuthContext.tsx`), que persiste os dados no `localStorage`.
+*   **Fonte de Dados**: A aplicação está **majoritariamente integrada** com um backend real (Python/FastAPI em `http://localhost:5000`). Apenas funcionalidades menores, como o carrossel de banners, ainda utilizam dados mockados. O estado do carrinho de compras também permanece inteiramente no lado do cliente.
+*   **Gerenciamento de Estado de UI (Filtros)**: O estado dos filtros da página inicial é gerenciado via **parâmetros de consulta na URL**, permitindo que as buscas sejam compartilháveis e linkáveis.
 
-## 3. Estado da Integração com a API
+## 3. Funcionalidades Implementadas
 
-A aplicação está parcialmente integrada com o backend. Abaixo está o detalhamento do que está e não está conectado.
+### 3.1. Fluxo de Autenticação Real
+O sistema de login, antes simulado, agora é totalmente funcional e integrado com a API.
 
-### 3.1. Funcionalidades Conectadas à API
+*   **API de Login**: A função `loginUser` em `services/api.ts` foi implementada para se comunicar com o endpoint `POST /user/login`.
+*   **`AuthContext` Refatorado**: O contexto agora armazena o objeto de usuário (`UserRead`) completo no estado e no `localStorage`, em vez de um ID simulado. Ele também busca os tipos de usuário (`user_types`) da API para determinar permissões.
+*   **Página de Login**: A página `/login` agora é um formulário controlado que captura email e senha, chama a API de login e, em caso de sucesso, atualiza o `AuthContext` com os dados do usuário, redirecionando-o para a home.
+*   **Navbar Dinâmica**: A barra de navegação foi refatorada para:
+    *   Exibir "Olá, [nome do usuário]!" e um botão "Sair" funcional quando o usuário está logado.
+    *   Renderizar condicionalmente o botão "Adicionar Asset" apenas se o tipo de usuário logado for `VENDOR` ou `BUYER/VENDOR` (lógica controlada pela flag `canSell` no `AuthContext`).
 
-*   **Listagem de Produtos na Home (`/`)**: A página principal agora busca e exibe os produtos dinamicamente através da função `getAssetFeed` do serviço `services/api.ts`.
-*   **Sistema de Favoritos (Ação de Favoritar)**: A ação de favoritar/desfavoritar um produto no `ProductCard` foi refatorada. Ela agora utiliza as funções `addFavorite` e `removeFavorite` da API, persistindo o estado de favoritos diretamente no backend para o usuário logado.
+### 3.2. Listagem e Filtro de Assets
+A página inicial agora possui um sistema de filtro dinâmico e robusto.
 
-### 3.2. Funcionalidades que AINDA USAM Dados Mockados
+*   **Fonte da Verdade na URL**: O estado dos filtros (busca por título, categoria, preço) é armazenado diretamente nos parâmetros da URL (ex: `/?title=sword&category_id=3`). Isso garante que o estado da UI seja consistente e compartilhável.
+*   **Busca Centralizada na Navbar**: A barra de pesquisa na `Navbar` é agora a única fonte para a busca por texto. Ela atualiza o parâmetro `title` na URL com um *debounce* de 500ms para evitar requisições excessivas.
+*   **`FilterBar` Controlada**: Os dropdowns de Categoria e Preço na `FilterBar` também atualizam os parâmetros da URL (`category_id`, `price_min`, `price_max`), disparando uma nova busca de produtos. O layout do componente também foi ajustado para melhor alinhamento.
+*   **Feedback de UI**: Quando uma busca ou filtro não retorna nenhum resultado, a página exibe uma mensagem informativa para o usuário (ex: "Nenhum resultado encontrado para 'espada' na categoria 'Armas'").
+*   **Paginação Removida**: O botão "Carregar Mais", que existia anteriormente, foi removido. A paginação pode ser reimplementada futuramente através dos parâmetros `page` e `page_size` da API.
 
-*   **Página de Detalhes do Produto (`/produto/[id]`)**: Esta página **não é dinâmica**. Ela ignora o `id` da URL e sempre exibe os dados do objeto `PRODUCT_DETAIL` do arquivo `lib/mock-data.ts`.
-*   **Página de Favoritos (`/favoritos`)**: Esta página **está funcionalmente quebrada**. Ela tenta filtrar a lista de `PRODUCTS` mockados usando um estado de `favorites` que não existe mais no `AuthContext`, pois a lógica foi movida para o backend. A página precisa ser reconstruída para buscar os dados da API.
-*   **Sistema de Carrinho de Compras (`/carrinho`)**: Toda a lógica do carrinho (adicionar, remover, exibir) é puramente client-side, gerenciada pelo `AuthContext` e `localStorage`, e opera sobre o array de `PRODUCTS` mockado.
-*   **Carrossel de Banners (`BannerCarousel.tsx`)**: O conteúdo dos banners é estático e vem da variável `BANNERS` do arquivo de mock.
+### 3.3. Criação e Edição de Assets (`/vender`)
+A página de criação de assets foi implementada e é funcional.
 
-### 3.3. Fluxo de Autenticação (Simulado)
+*   **Upload de Imagens**: Foi adicionada a funcionalidade de upload de imagens. O sistema permite múltiplas imagens, seleção de capa e remoção. As imagens são convertidas para **base64** e enviadas para a API junto com os outros dados do asset, sem a necessidade de bibliotecas externas (`react-dropzone` foi removido).
 
-O fluxo de autenticação permanece o mesmo: um sistema simulado que armazena o estado `isLoggedIn` e um `userId` fixo no `localStorage` para permitir o uso de funcionalidades que dependem de um usuário, como o sistema de favoritos conectado à API.
+### 3.4. Correções de Bugs e Refinamentos
 
-*   **`AuthContext.tsx`**: Provê o estado `isLoggedIn`, `userId`, e as funções `login()` e `logout()`.
-*   **`/login`**: A página chama `login()` e redireciona para a home.
+*   **Página de Favoritos (`/favoritos`)**: A página, que estava quebrada por usar dados mockados, foi completamente corrigida. Agora, ela busca os dados da API `getAssetFeed` e filtra os produtos onde `is_favorite` é verdadeiro, exibindo a lista de favoritos real do usuário.
+*   **Botão "Adicionar ao Carrinho"**: O bug que fazia o botão nos cards de produto não funcionar foi corrigido. O problema não era no botão, mas na página `/carrinho`, que lia dados mockados. A página foi refatorada para buscar os detalhes dos produtos da API, filtrando-os com base nos IDs armazenados localmente no carrinho.
+*   **Sistema de Avaliações (`/produto/[id]`)**: A funcionalidade foi implementada por completo. A função `createReview` foi adicionada à `services/api.ts` e o `ReviewForm` foi conectado a ela, permitindo que usuários logados publiquem avaliações. A lista de avaliações é atualizada automaticamente após a publicação.
+*   **Detalhes de Arquivo Removidos**: A seção "Detalhes do arquivo" no `PurchaseCard` foi removida, pois a API não fornece essas informações (`formato`, `tamanho`, etc.), limpando a interface.
+*   **Estabilidade do Ambiente**: Uma série de problemas de build relacionados a dependências e configurações (`next.config`, `postcss.config`) foram resolvidos. O `postcss.config.mjs` foi removido em favor da configuração automática do Next.js.
 
-## 4. Notas Técnicas e Correções
+## 4. Regras de Negócio e Notas Técnicas
 
-*   **Refatoração do `AuthContext`**: O contexto foi modificado para gerenciar o `userId` e para que a função `toggleFavorite` realize chamadas de API, em vez de manipular um array local. A gestão do `cart` permanece no `localStorage`.
-*   **Parâmetros Dinâmicos (Next.js)**: A página de produto (`/produto/[id]`) usa `React.use(params)` para resolver o ID da URL, embora o ID ainda não seja usado para buscar dados da API.
-*   **Refatoração de Componentes**: O `ProductGrid.tsx` foi refatorado para aceitar uma lista de produtos como `prop`, tornando-o reutilizável nas páginas da home (com dados da API) e de favoritos/carrinho (com dados mockados).
-
-## 5. Regras de Colaboração
-
-1.  **Permissão para Alterações:** Sempre pedirei sua permissão antes de fazer qualquer modificação nos arquivos do projeto.
-2.  **Atualização do GEMINI.MD:** Após qualquer alteração na implementação do código, atualizarei este arquivo para refletir o estado atual do projeto, garantindo que tenhamos um ponto de partida claro para sessões futuras.
-3.  **Postura Profissional:** Atuarei como um desenvolvedor sênior com mais de 10 anos de experiência, focando em soluções de alta qualidade que sejam eficazes e elegantes, sem complexidade desnecessária.
+1.  **Ordenação Fixa**: O backend ordena os resultados por "Mais Recentes" de forma fixa. O dropdown de ordenação na `FilterBar` é apenas um elemento visual no momento.
+2.  **Carrinho Client-Side**: A funcionalidade do carrinho (adição e remoção de IDs) permanece inteiramente no lado do cliente, usando `localStorage`. Apenas a exibição dos detalhes dos produtos no carrinho foi conectada à API. A integração completa com o backend foi adiada por falta de endpoints na API.
+3.  **Filtragem de Categoria**: A API aceita apenas um `category_id` por vez e não é recursiva (filtrar por uma categoria pai não inclui os filhos).
+4.  **Autenticação**: O `AuthContext` é a fonte da verdade para o estado do usuário. Ele se hidrata a partir do `localStorage` no lado do cliente para evitar erros de SSR.
