@@ -3,11 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 function UserAuth() {
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
+  const router = useRouter();
 
-  if (isLoggedIn) {
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
+
+  if (isLoggedIn && user) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         <div
@@ -32,9 +39,12 @@ function UserAuth() {
               alignItems: "center",
               justifyContent: "center",
               fontSize: "14px",
+              color: 'white',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 700,
             }}
           >
-            👤
+            {user.first_name.charAt(0).toUpperCase()}
           </div>
           <span
             style={{
@@ -44,11 +54,11 @@ function UserAuth() {
               color: "var(--color-text-primary)",
             }}
           >
-            Olá, Fulano!
+            Olá, {user.first_name}!
           </span>
         </div>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           style={{
             background: 'none',
             border: 'none',
@@ -123,6 +133,7 @@ function UserAuth() {
 
 export default function Navbar() {
   const [searchValue, setSearchValue] = useState("");
+  const { canSell } = useAuth();
 
   return (
     <header
@@ -176,7 +187,7 @@ export default function Navbar() {
         <div style={{ flex: 1, maxWidth: "480px", position: "relative" }}>
           <input
             type="text"
-            placeholder="🔍 Buscar"
+            placeholder="🔍 Buscar asset"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             style={{
@@ -210,11 +221,13 @@ export default function Navbar() {
         {/* Action icons */}
         <nav style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {/* Add / Sell */}
-          <Link href="/vender" style={{ textDecoration: "none" }}>
-            <NavIconButton label="Vender" title="Publicar produto">
-              <PlusIcon />
-            </NavIconButton>
-          </Link>
+          {canSell && (
+            <Link href="/vender" style={{ textDecoration: "none" }}>
+              <NavIconButton label="Vender" title="Publicar produto">
+                <PlusIcon />
+              </NavIconButton>
+            </Link>
+          )}
 
           {/* Wishlist */}
           <Link href="/favoritos" style={{ textDecoration: 'none' }}>

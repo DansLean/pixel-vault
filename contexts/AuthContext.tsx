@@ -1,13 +1,15 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { addFavorite, removeFavorite } from '../services/api';
+import { addFavorite, removeFavorite, getUserTypes } from '../services/api';
+import type { UserRead, UserTypeResponse } from '../services/api-types';
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  userId: number | null;
+  user: UserRead | null;
+  canSell: boolean;
   cart: number[];
-  login: () => void;
+  login: (userData: UserRead) => void;
   logout: () => void;
   toggleFavorite: (productId: number, isFavorite: boolean) => Promise<void>;
   addToCart: (productId: number) => void;
@@ -17,68 +19,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to safely parse JSON from localStorage
+function getStoredItem<T>(key: string, defaultValue: T): T {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error(`Error reading "${key}" from localStorage`, error);
+    return defaultValue;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [cart, setCart] = useState<number[]>([]);
+  const [user, setUser] = useState<UserRead | null>(() => getStoredItem('user', null));
+  const [userTypes, setUserTypes] = useState<UserTypeResponse[]>([]);
+  const [cart, setCart] = useState<number[]>(() => getStoredItem('cart', []));
+
+  const isLoggedIn = !!user;
+  
+  // Determine if the user has selling privileges
+  const canSell = user && userTypes.some(ut => 
+    ut.id === user.user_type_id && (ut.type === 'VENDOR' || ut.type === 'BUYER/VENDOR')
+  );
 
   useEffect(() => {
-    const storedAuthState = localStorage.getItem('isLoggedIn');
-    if (storedAuthState === 'true') {
-      setIsLoggedIn(true);
-    }
-    
-    const storedUserId = localStorage.getItem('userId');
-    if (storedUserId) {
-      setUserId(JSON.parse(storedUserId));
-    }
-    
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
+    // Fetch all user types on initial load to map IDs to names
+    const fetchUserTypes = async () => {
+      try {
+        const types = await getUserTypes();
+        setUserTypes(types);
+      } catch (error) {
+        console.error("Failed to fetch user types", error);
+      }
+    };
+    fetchUserTypes();
   }, []);
 
-  const login = () => {
-    const mockUserId = 2; // Simulate login with user ID 2
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userId', JSON.stringify(mockUserId));
-    setIsLoggedIn(true);
-    setUserId(mockUserId);
+  const login = (userData: UserRead) => {
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userId');
-    setIsLoggedIn(false);
-    setUserId(null);
+    localStorage.removeItem('user');
+    setUser(null);
+    // Optionally clear cart on logout as well
+    // localStorage.removeItem('cart');
+    // setCart([]);
   };
 
   const toggleFavorite = async (productId: number, isFavorite: boolean) => {
-    if (!userId) {
-      // Should not happen if UI is correct, but as a safeguard
-      console.error("User is not logged in. Cannot toggle favorite.");
-      // In a real app, you might want to redirect to login
-      // window.location.href = '/login';
-      return;
-    }
+    if (!user) return;
     try {
       if (isFavorite) {
-        await removeFavorite(userId, productId);
+        await removeFavorite(user.id, productId);
       } else {
-        await addFavorite(userId, productId);
+        await addFavorite(user.id, productId);
       }
     } catch (error) {
       console.error("Failed to toggle favorite:", error);
-      // Optionally, show a toast or notification to the user
     }
   };
 
   const addToCart = (productId: number) => {
     setCart(prevCart => {
-      if (prevCart.includes(productId)) {
-        return prevCart;
-      }
+      if (prevCart.includes(productId)) return prevCart;
       const newCart = [...prevCart, productId];
       localStorage.setItem('cart', JSON.stringify(newCart));
       return newCart;
@@ -100,10 +105,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ 
-      isLoggedIn, login, logout, 
-      userId,
+      isLoggedIn,
+      user,
+      canSell,
+      login, 
+      logout,
       toggleFavorite,
-      cart, addToCart, removeFromCart,
+      cart, 
+      addToCart, 
+      removeFromCart,
       clearCart
     }}>
       {children}

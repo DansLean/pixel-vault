@@ -9,10 +9,6 @@ type Props = {
   price: number;
   rating: number;
   ratingCount: number;
-  fileFormat?: string;
-  fileSize?: string;
-  polygons?: string;
-  textures?: string;
 };
 
 export default function PurchaseCard({
@@ -22,21 +18,9 @@ export default function PurchaseCard({
   price,
   rating,
   ratingCount,
-  fileFormat,
-  fileSize,
-  polygons,
-  textures,
 }: Props) {
   const { cart, addToCart } = useAuth();
   const isInCart = cart.includes(productId);
-
-  const fileDetails = [
-      ["Formato", fileFormat],
-      ["Tamanho", fileSize],
-      ["Polígonos", polygons],
-      ["Texturas", textures],
-  ].filter(([, value]) => value && value !== "N/A");
-
 
   return (
     <div
@@ -159,57 +143,6 @@ export default function PurchaseCard({
       >
         {isInCart ? "✓ Adicionado" : "Adicionar ao carrinho"}
       </button>
-
-      {/* Divider */}
-      {fileDetails.length > 0 && <div style={{ height: "2px", backgroundColor: "rgba(122,79,16,0.15)" }} />}
-
-      {/* File details */}
-      {fileDetails.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <p
-            style={{
-                fontFamily: "var(--font-pixel)",
-                fontSize: "8px",
-                color: "var(--color-text-secondary)",
-                marginBottom: "4px",
-                letterSpacing: "0.3px",
-            }}
-            >
-            Detalhes do arquivo
-            </p>
-            {fileDetails.map(([label, value]) => (
-            <div
-                key={label as string}
-                style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                }}
-            >
-                <span
-                style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: "var(--color-text-secondary)",
-                }}
-                >
-                {label}
-                </span>
-                <span
-                style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "12px",
-                    fontWeight: 800,
-                    color: "var(--color-text-primary)",
-                }}
-                >
-                {value}
-                </span>
-            </div>
-            ))}
-        </div>
-      )}
     </div>
   );
 }

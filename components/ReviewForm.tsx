@@ -1,5 +1,9 @@
 "use client";
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { createReview } from '@/services/api';
+import type { ReviewCreate } from '@/services/api-types';
 
 const Star = ({ filled, onClick, onMouseEnter, onMouseLeave }) => (
   <svg
@@ -18,9 +22,62 @@ const Star = ({ filled, onClick, onMouseEnter, onMouseLeave }) => (
   </svg>
 );
 
-export default function ReviewForm() {
+export default function ReviewForm({ assetId }: { assetId: number }) {
     const [rating, setRating] = useState(0);
     const [hoverRating, setHoverRating] = useState(0);
+    const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { isLoggedIn, userId } = useAuth();
+    const router = useRouter();
+
+    const handleSubmit = async () => {
+        if (!isLoggedIn || !userId) {
+            alert("Você precisa estar logado para publicar uma avaliação.");
+            router.push('/login');
+            return;
+        }
+
+        if (rating === 0) {
+            alert("Por favor, selecione uma nota (de 1 a 5 estrelas).");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        const payload: ReviewCreate = {
+            asset_id: assetId,
+            user_id: userId,
+            rate: rating,
+            message: message || null,
+        };
+
+        try {
+            await createReview(payload);
+            alert("Avaliação publicada com sucesso!");
+            setRating(0);
+            setMessage('');
+            // Refresh the page server-side to show the new review
+            router.refresh();
+        } catch (error) {
+            console.error("Failed to submit review:", error);
+            // The API might throw an error if the user already reviewed this asset.
+            // A more specific error message from the backend would be ideal.
+            alert("Falha ao enviar avaliação. Você já pode ter avaliado este item.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isLoggedIn) {
+      return (
+        <section style={{ marginTop: '32px', textAlign: 'center', background: 'var(--bg-navbar)', padding: '30px', borderRadius: 'var(--radius-card)', border: '3px solid var(--bg-card-border)' }}>
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+            <a href="/login" style={{color: 'var(--color-accent)'}}>Faça login</a> para deixar sua avaliação.
+          </p>
+        </section>
+      )
+    }
 
     return (
         <section style={{ marginTop: '32px' }}>
@@ -45,7 +102,9 @@ export default function ReviewForm() {
                     ))}
                 </div>
                 <textarea
-                    placeholder="Escreva seu comentário..."
+                    placeholder="Escreva seu comentário (opcional)..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     style={{
                       width: '100%',
                       minHeight: '100px',
@@ -61,19 +120,24 @@ export default function ReviewForm() {
                     }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button style={{
-                      backgroundColor: 'var(--color-text-primary)',
-                      color: 'var(--color-white)',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      padding: '12px 24px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      boxShadow: '0 3px 0 rgba(0,0,0,0.3)',
-                    }}>
-                        Publicar Avaliação
+                    <button 
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        style={{
+                          backgroundColor: 'var(--color-text-primary)',
+                          color: 'var(--color-white)',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          padding: '12px 24px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: 'none',
+                          cursor: isSubmitting ? 'wait' : 'pointer',
+                          boxShadow: '0 3px 0 rgba(0,0,0,0.3)',
+                          opacity: isSubmitting ? 0.7 : 1,
+                        }}
+                    >
+                        {isSubmitting ? 'Publicando...' : 'Publicar Avaliação'}
                     </button>
                 </div>
             </div>

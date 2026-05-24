@@ -101,6 +101,13 @@ export interface AssetCreate {
     pictures?: AssetPictureInput[];
 }
 
+export interface ReviewCreate {
+    asset_id: number;
+    user_id: number;
+    rate: number;
+    message: string | null;
+}
+
 export interface ReviewRead {
     id: number;
     asset_id: number;
@@ -117,9 +124,7 @@ export interface UserTypeResponse {
     updated_at: string;
 }
 
-export interface UserTypeResponse {
-    id: number;
-    type: string;
-    created_at: string;
-    updated_at: string;
+export interface LoginRequest {
+    email: string;
+    password: string;
 }

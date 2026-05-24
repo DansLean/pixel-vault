@@ -143,7 +143,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
             <AuthorCard author={author} />
             
             {/* Review Form */}
-            <ReviewForm />
+            <ReviewForm assetId={assetId} />
 
             {/* Ratings List */}
             <RatingsList reviews={reviews} />
@@ -159,10 +159,6 @@ export default async function ProductPage({ params }: { params: { id: string } }
               price={Number(asset.price)}
               rating={averageRating}
               ratingCount={ratingCount}
-              fileFormat={"Não informado"}
-              fileSize={"Não informado"}
-              polygons={"Não informado"}
-              textures={"Não informado"}
             />
 
             {/* License card */}

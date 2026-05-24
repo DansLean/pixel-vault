@@ -7,7 +7,8 @@ import {
     CategoryRead, 
     AssetCreate,
     ReviewRead,
-    UserTypeResponse
+    UserTypeResponse,
+    ReviewCreate
 } from "./api-types";
 
 const BASE_URL = "http://localhost:5000";
@@ -59,6 +60,15 @@ export async function createAsset(asset: AssetCreate): Promise<AssetRead> {
 
 
 // === USERS ===
+
+export async function loginUser(credentials: LoginRequest): Promise<UserRead> {
+    const response = await fetch(`${BASE_URL}/user/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+    });
+    return handleResponse<UserRead>(response);
+}
 
 export async function getUserById(id: number): Promise<UserRead> {
     const response = await fetch(`${BASE_URL}/user/${id}`);
@@ -117,6 +127,15 @@ export async function getCategories(): Promise<CategoryRead[]> {
 export async function getReviewsByAssetId(assetId: number): Promise<ReviewRead[]> {
     const response = await fetch(`${BASE_URL}/reviews/asset/${assetId}`);
     return handleResponse<ReviewRead[]>(response);
+}
+
+export async function createReview(review: ReviewCreate): Promise<ReviewRead> {
+    const response = await fetch(`${BASE_URL}/reviews/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(review),
+    });
+    return handleResponse<ReviewRead>(response);
 }
 
 // === USER TYPES ===
