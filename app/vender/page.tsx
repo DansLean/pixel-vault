@@ -37,7 +37,8 @@ const getLicenseRules = (license: LicenseTypeRead | undefined) => {
 
 export default function AddAssetPage() {
   const router = useRouter();
-  const { userId, isLoggedIn } = useAuth();
+    const { user, isLoggedIn } = useAuth();
+  const userId = user?.id;
   
   const [formData, setFormData] = useState({
     name: "",
