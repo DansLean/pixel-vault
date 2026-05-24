@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { SORT_OPTIONS, PRICE_RANGES } from '@/lib/mock-data';
+import React, { useState, useEffect, useMemo } from 'react';
+import { PRICE_RANGES } from '@/lib/mock-data';
 import type { CategoryReadWithChildren, AssetFilterParams } from '@/services/api-types';
 
-// This is the styled, custom dropdown from the previous version of the file.
-// I'm keeping it as a sub-component.
+// O sub-componente FilterDropdown permanece o mesmo
 function FilterDropdown({
   value,
   options,
   onChange,
   label,
+  disabled = false,
 }: {
   value: string;
   options: { value: string; label: string }[];
   onChange: (v: string) => void;
   label: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -33,9 +34,10 @@ function FilterDropdown({
   const selectedLabel = options.find(opt => opt.value === value)?.label || label;
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <div ref={ref} style={{ position: "relative", display: "inline-block", opacity: disabled ? 0.5 : 1 }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
         style={{
           display: "flex",
           alignItems: "center",
@@ -44,7 +46,7 @@ function FilterDropdown({
           backgroundColor: "var(--bg-filter)",
           border: "3px solid #2a1500",
           borderRadius: 0,
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
           fontFamily: "var(--font-pixel)",
           fontSize: "9px",
           color: "var(--color-text-primary)",
@@ -60,7 +62,7 @@ function FilterDropdown({
         </span>
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div style={{ position: "absolute", top: "100%", left: 0, minWidth: "100%", backgroundColor: "var(--bg-filter)", border: "3px solid #2a1500", borderTop: "none", zIndex: 50, overflow: "hidden" }}>
           {options.map((opt) => {
             const isActive = opt.value === value;
@@ -101,7 +103,6 @@ function FilterDropdown({
 }
 
 
-
 interface FilterBarProps {
   categories: CategoryReadWithChildren[];
   filters: AssetFilterParams;
@@ -109,25 +110,44 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ categories, filters, onFilterChange }: FilterBarProps) {
-  // Populate category options from props
-  const categoryOptions = [{ value: '', label: 'Todas as Categorias' }];
-  categories.forEach(cat => {
-    categoryOptions.push({ value: String(cat.id), label: cat.name });
-    if (cat.children) {
-      cat.children.forEach(subCat => {
-        categoryOptions.push({ value: String(subCat.id), label: `  ↳ ${subCat.name}` });
-      });
+  // Encontra o pai da categoria selecionada na URL, se houver
+  const activeParent = useMemo(() => {
+    if (!filters.category_id) return null;
+    for (const cat of categories) {
+      if (cat.id === filters.category_id) return cat;
+      if (cat.children?.some(child => child.id === filters.category_id)) {
+        return cat;
+      }
     }
-  });
-
-  const priceOptions = PRICE_RANGES.map((range, index) => ({ value: String(index), label: range }));
-  const sortOptions = SORT_OPTIONS.map(opt => ({ value: opt, label: opt }));
+    return null;
+  }, [categories, filters.category_id]);
   
-  // Handlers for dropdowns
+  // Opções para o dropdown de categorias-pai
+  const parentCategoryOptions = [
+    { value: '', label: 'Todas as Categorias' },
+    ...categories.map(cat => ({ value: String(cat.id), label: cat.name }))
+  ];
+  
+  // Opções para o dropdown de subcategorias, baseado no pai ativo
+  const subCategoryOptions = useMemo(() => {
+    if (!activeParent || !activeParent.children || activeParent.children.length === 0) {
+      return [];
+    }
+    return [
+      { value: String(activeParent.id), label: `Todas de ${activeParent.name}` },
+      ...activeParent.children.map(sub => ({ value: String(sub.id), label: sub.name }))
+    ];
+  }, [activeParent]);
+
+  // Handlers para os dropdowns
   const handleCategoryChange = (value: string) => {
     onFilterChange({ category_id: value ? Number(value) : undefined });
   };
 
+  const handleSubCategoryChange = (value: string) => {
+    onFilterChange({ category_id: value ? Number(value) : undefined });
+  };
+  
   const handlePriceChange = (value: string) => {
     let price_min: number | undefined;
     let price_max: number | undefined;
@@ -140,20 +160,37 @@ export default function FilterBar({ categories, filters, onFilterChange }: Filte
     onFilterChange({ price_min, price_max });
   };
 
-  // Determine the selected price range index based on filters prop
+  const handleSortChange = (value: string) => {
+    onFilterChange({ order_by: value });
+  };
+
+  // Determina o valor selecionado para cada dropdown
+  const selectedParentValue = activeParent ? String(activeParent.id) : '';
+  const selectedSubCategoryValue = (activeParent && filters.category_id !== activeParent.id) 
+    ? String(filters.category_id) 
+    : (activeParent ? String(activeParent.id) : '');
+
   const getPriceIndex = () => {
     if (filters.price_min === 0 && filters.price_max === 20) return '1';
     if (filters.price_min === 20 && filters.price_max === 50) return '2';
     if (filters.price_min === 50 && filters.price_max === 100) return '3';
     if (filters.price_min === 100 && filters.price_max === undefined) return '4';
-    return '0'; // Default to "Todos os Preços"
+    return '0';
   }
+  const priceOptions = PRICE_RANGES.map((range, index) => ({ value: String(index), label: range }));
+  
+  const sortOptions = [
+    { value: 'mais_recente', label: 'Mais Recente' },
+    { value: 'mais_populares', label: 'Mais Populares' },
+    { value: 'menor_preco', label: 'Preço Menor' },
+    { value: 'maior_preco', label: 'Preço Maior' },
+  ];
 
   return (
     <div
       style={{
         maxWidth: "1200px",
-        margin: "32px auto 0", // Added top margin
+        margin: "32px auto 0",
         padding: "20px",
         backgroundColor: "var(--bg-navbar)",
         border: "3px solid var(--bg-card-border)",
@@ -165,18 +202,24 @@ export default function FilterBar({ categories, filters, onFilterChange }: Filte
         justifyContent: "center",
       }}
     >
-      {/* Filter Dropdowns */}
       <FilterDropdown
-        label="Todas as Categorias"
-        value={String(filters.category_id || '')}
-        options={categoryOptions}
+        label="Categorias"
+        value={selectedParentValue}
+        options={parentCategoryOptions}
         onChange={handleCategoryChange}
       />
       <FilterDropdown
+        label="Subcategorias"
+        value={selectedSubCategoryValue}
+        options={subCategoryOptions}
+        onChange={handleSubCategoryChange}
+        disabled={subCategoryOptions.length === 0}
+      />
+      <FilterDropdown
         label="Ordenar por"
-        value={sortOptions[0].value}
+        value={filters.order_by || 'mais_recente'}
         options={sortOptions}
-        onChange={() => { /* Dummy, sorting is fixed on backend */ }}
+        onChange={handleSortChange}
       />
       <FilterDropdown
         label="Todos os Preços"

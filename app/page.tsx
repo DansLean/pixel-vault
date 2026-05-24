@@ -27,11 +27,13 @@ function SearchResult() {
     const categoryId = searchParams.get('category_id');
     const priceMin = searchParams.get('price_min');
     const priceMax = searchParams.get('price_max');
+    const orderBy = searchParams.get('order_by');
 
     if (title) params.title = title;
     if (categoryId) params.category_id = Number(categoryId);
     if (priceMin) params.price_min = Number(priceMin);
     if (priceMax) params.price_max = Number(priceMax);
+    if (orderBy) params.order_by = orderBy;
     
     return params;
   }, [searchParams, user]);
