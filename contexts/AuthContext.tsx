@@ -31,9 +31,14 @@ function getStoredItem<T>(key: string, defaultValue: T): T {
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<UserRead | null>(() => getStoredItem('user', null));
+  const [user, setUser] = useState<UserRead | null>(null);
   const [userTypes, setUserTypes] = useState<UserTypeResponse[]>([]);
-  const [cart, setCart] = useState<number[]>(() => getStoredItem('cart', []));
+  const [cart, setCart] = useState<number[]>([]);
+  
+  useEffect(() => {
+    setUser(getStoredItem('user', null));
+    setCart(getStoredItem('cart', []));
+  }, []);
 
   const isLoggedIn = !!user;
   

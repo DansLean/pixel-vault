@@ -34,12 +34,16 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // === ASSETS ===
 
 export async function getAssetFeed(
-  userId: number | null
+  filters: AssetFilterParams = {}
 ): Promise<AssetFeedResponse> {
   const url = new URL(`${BASE_URL}/feed/assets`);
-  if (userId) {
-    url.searchParams.append('user_id', String(userId));
-  }
+  // Append filter parameters to the URL
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      url.searchParams.append(key, String(value));
+    }
+  });
+
   const response = await fetch(url.toString());
   return handleResponse<AssetFeedResponse>(response);
 }
@@ -120,6 +124,11 @@ export async function getLicenseTypes(): Promise<LicenseTypeRead[]> {
 export async function getCategories(): Promise<CategoryRead[]> {
     const response = await fetch(`${BASE_URL}/categories/`);
     return handleResponse<CategoryRead[]>(response);
+}
+
+export async function getCategoriesTree(): Promise<CategoryReadWithChildren[]> {
+    const response = await fetch(`${BASE_URL}/categories/tree`);
+    return handleResponse<CategoryReadWithChildren[]>(response);
 }
 
 // === REVIEWS ===

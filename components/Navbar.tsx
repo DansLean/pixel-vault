@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { debounce } from "@/lib/utils";
 
 function UserAuth() {
   const { isLoggedIn, user, logout } = useAuth();
@@ -132,8 +133,44 @@ function UserAuth() {
 
 
 export default function Navbar() {
-  const [searchValue, setSearchValue] = useState("");
   const { canSell } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Local state for the search input
+  const [searchValue, setSearchValue] = useState(searchParams.get('title') || '');
+
+  // Debounced function to update URL
+  const debouncedUpdateUrl = useCallback(
+    debounce((newSearchValue: string) => {
+      const current = new URLSearchParams(Array.from(searchParams.entries()));
+
+      if (!newSearchValue.trim()) {
+        current.delete('title');
+      } else {
+        current.set('title', newSearchValue);
+      }
+      
+      const search = current.toString();
+      const query = search ? `?${search}` : "";
+      // Only push if the search query is different
+      if (searchParams.toString() !== current.toString()) {
+        router.push(`${pathname}${query}`);
+      }
+    }, 500),
+    [searchParams, pathname, router]
+  );
+
+  useEffect(() => {
+    // Sync local state with URL if it changes externally
+    setSearchValue(searchParams.get('title') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Trigger the debounced URL update when local search value changes
+    debouncedUpdateUrl(searchValue);
+  }, [searchValue, debouncedUpdateUrl]);
 
   return (
     <header
