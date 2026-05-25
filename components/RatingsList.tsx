@@ -40,7 +40,7 @@ const ReviewCard = ({ review }: { review: ReviewRead }) => (
         <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
-                    {`Usuário ${review.user_id}`}
+                    {`${review.username}`}
                 </h4>
                 <StarRating rating={review.rate} />
             </div>

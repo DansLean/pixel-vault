@@ -128,6 +128,7 @@ export interface ReviewRead {
     id: number;
     asset_id: number;
     user_id: number;
+    username:  string;
     rate: number;
     message: string | null;
     created_at: string;
