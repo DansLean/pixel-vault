@@ -28,7 +28,8 @@ export default function ReviewForm({ assetId }: { assetId: number }) {
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { isLoggedIn, userId } = useAuth();
+    const { isLoggedIn, user } = useAuth();
+    const userId = user?.id;
     const router = useRouter();
 
     const handleSubmit = async () => {

@@ -8,9 +8,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 type ProductCardProps = {
   product: AssetFeedItem;
+  categoryPath: string;
 };
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, categoryPath }: ProductCardProps) {
   const { isLoggedIn, cart, addToCart, isFavorite, toggleFavorite, pendingFavoriteIds } = useAuth();
   const router = useRouter();
 
@@ -97,23 +98,22 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Category badge */}
-          {product.category_name && (
+          {categoryPath && (
             <div
               style={{
                 position: "absolute",
                 bottom: "8px",
                 right: "8px",
-                backgroundColor: "var(--color-text-primary)",
+                backgroundColor: "rgba(0, 0, 0, 0.6)",
                 color: "var(--color-white)",
                 fontFamily: "var(--font-body)",
-                fontSize: "11px",
-                fontWeight: 800,
-                padding: "4px 10px",
+                fontSize: "10px",
+                fontWeight: 700,
+                padding: "4px 8px",
                 borderRadius: "6px",
-                letterSpacing: "0.3px",
               }}
             >
-              {product.category_name}
+              {categoryPath}
             </div>
           )}
 

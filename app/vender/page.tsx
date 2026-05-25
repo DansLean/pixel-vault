@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCategoriesTree, getLicenseTypes, createAsset } from "@/services/api";
 import type { CategoryReadWithChildren, LicenseTypeRead, AssetCreate } from "@/services/api-types";
 import ImageUploader, { AssetPictureInput } from "@/components/ImageUploader";
+import CurrencyInput from 'react-currency-input-field';
 
 // Helper to transform license object into rules
 const getLicenseRules = (license: LicenseTypeRead | undefined) => {
@@ -30,7 +31,7 @@ export default function AddAssetPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    price: "0.00",
+    price: "",
     category_id: "" as string | number,
     license_type_id: "" as string | number,
   });
@@ -43,8 +44,6 @@ export default function AddAssetPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // This check should be based on the auth context's loading state in a real app,
-    // but for now, this is sufficient.
     if (!isLoggedIn) {
       router.push('/login');
     }
@@ -77,6 +76,10 @@ export default function AddAssetPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePriceChange = (value: string | undefined) => {
+    setFormData(prev => ({ ...prev, price: value || "" }));
+  };
+
   const handleLicenseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, license_type_id: e.target.value }));
   };
@@ -84,14 +87,11 @@ export default function AddAssetPage() {
   const handleParentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const parentId = e.target.value;
     setSelectedParentId(parentId);
-    // When parent changes, the subcategory is reset, so the parent becomes the main category
     setFormData(prev => ({ ...prev, category_id: parentId }));
   };
 
   const handleSubCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const subId = e.target.value;
-    // If user selects a subcategory, it overwrites the parent ID in the form.
-    // If they select the "default" option, it keeps the parent ID.
     setFormData(prev => ({ ...prev, category_id: subId || selectedParentId }));
   };
   
@@ -127,12 +127,16 @@ export default function AddAssetPage() {
         alert("Por favor, selecione uma categoria.");
         return;
     }
+    if (!formData.price || parseFloat(formData.price) < 0) {
+        alert("Por favor, insira um preço válido.");
+        return;
+    }
     setIsSubmitting(true);
     
     const payload: AssetCreate = {
       name: formData.name,
       description: formData.description,
-      price: formData.price,
+      price: formData.price.replace(',', '.'), // Ensure backend receives a dot.
       license_type_id: Number(formData.license_type_id),
       category_id: Number(formData.category_id) || null,
       user_id: userId,
@@ -209,7 +213,31 @@ export default function AddAssetPage() {
             )}
 
             <FormInput name="description" label="Descrição" value={formData.description} onChange={handleInputChange} multiline={true} />
-            <FormInput name="price" label="Preço" type="number" value={formData.price} onChange={handleInputChange} required />
+            
+            <div>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "8px", display: "block" }}>
+                Preço
+              </label>
+              <CurrencyInput
+                name="price"
+                placeholder="R$ 0,00"
+                value={formData.price}
+                onValueChange={handlePriceChange}
+                intlConfig={{ locale: 'pt-BR', currency: 'BRL' }}
+                style={{
+                  width: "100%",
+                  height: "45px",
+                  padding: "12px 14px",
+                  backgroundColor: "var(--bg-card)",
+                  border: "3px solid var(--bg-card-border)",
+                  borderRadius: "var(--radius-card)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: "14px",
+                  color: "var(--color-text-primary)",
+                }}
+                required
+              />
+            </div>
             
             <FormSelect
               name="license_type_id"

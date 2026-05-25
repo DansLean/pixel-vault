@@ -1,9 +1,45 @@
 "use client";
 
-import { AssetFeedItem } from "@/services/api-types";
+import { AssetFeedItem, CategoryReadWithChildren } from "@/services/api-types";
 import ProductCard from "./ProductCard";
+import { useMemo } from "react";
 
-export default function ProductGrid({ products }: { products: AssetFeedItem[] }) {
+type Props = {
+  products: AssetFeedItem[];
+  categoryTree: CategoryReadWithChildren[];
+}
+
+function findCategoryPath(nodes: CategoryReadWithChildren[], targetId: number, path: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const currentPath = [...path, node.name];
+    if (node.id === targetId) {
+      return currentPath;
+    }
+    if (node.children) {
+      const foundPath = findCategoryPath(node.children, targetId, currentPath);
+      if (foundPath) {
+        return foundPath;
+      }
+    }
+  }
+  return null;
+}
+
+export default function ProductGrid({ products, categoryTree }: Props) {
+  
+  const categoryPathMap = useMemo(() => {
+    const map = new Map<number, string>();
+    if (!categoryTree) return map;
+
+    for (const product of products) {
+      if (product.category_id && !map.has(product.category_id)) {
+        const pathArray = findCategoryPath(categoryTree, product.category_id);
+        map.set(product.category_id, pathArray ? pathArray.join(' > ') : (product.category_name || ''));
+      }
+    }
+    return map;
+  }, [products, categoryTree]);
+
   return (
     <section
       style={{
@@ -20,7 +56,11 @@ export default function ProductGrid({ products }: { products: AssetFeedItem[] })
         }}
       >
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard 
+            key={product.id} 
+            product={product} 
+            categoryPath={product.category_id ? categoryPathMap.get(product.category_id) || '' : ''}
+          />
         ))}
       </div>
 

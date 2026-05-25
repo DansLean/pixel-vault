@@ -127,7 +127,7 @@ function SearchResult() {
         )
     }
 
-    return <ProductGrid products={products} />;
+    return <ProductGrid products={products} categoryTree={categories} />;
   }
 
   return (
