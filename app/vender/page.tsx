@@ -1,43 +1,30 @@
 "use client";
 
 import Navbar from "@/components/Navbar";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCategories, getLicenseTypes, createAsset } from "@/services/api";
-import type { CategoryRead, LicenseTypeRead, AssetCreate } from "@/services/api-types";
+import { getCategoriesTree, getLicenseTypes, createAsset } from "@/services/api";
+import type { CategoryReadWithChildren, LicenseTypeRead, AssetCreate } from "@/services/api-types";
 import ImageUploader, { AssetPictureInput } from "@/components/ImageUploader";
 
 // Helper to transform license object into rules
 const getLicenseRules = (license: LicenseTypeRead | undefined) => {
-    if (!license) {
-        return { canDo: [], cannotDo: [] };
-    }
-    const canDo = [];
-    const cannotDo = [];
-
-    if (license.can_use_commercially) canDo.push("Usar em projetos comerciais");
-    else cannotDo.push("Uso comercial não permitido");
-
-    if (license.can_modify) canDo.push("Modificar o asset");
-    else cannotDo.push("Modificação não permitida");
-    
+    if (!license) return { canDo: [], cannotDo: [] };
+    const canDo = [], cannotDo = [];
+    if (license.can_use_commercially) canDo.push("Usar em projetos comerciais"); else cannotDo.push("Uso comercial não permitido");
+    if (license.can_modify) canDo.push("Modificar o asset"); else cannotDo.push("Modificação não permitida");
     if (license.requires_attribution) canDo.push("Requer atribuição ao autor original");
-    
-    if (license.can_resell) canDo.push("Revender o asset (verificar termos)");
-    else cannotDo.push("Não pode revender o asset isoladamente");
-
-    if (license.can_sublicense) canDo.push("Sublicenciar a terceiros (verificar termos)");
-    else cannotDo.push("Não pode sublicenciar a terceiros");
-    
+    if (license.can_resell) canDo.push("Revender o asset (verificar termos)"); else cannotDo.push("Não pode revender o asset isoladamente");
+    if (license.can_sublicense) canDo.push("Sublicenciar a terceiros (verificar termos)"); else cannotDo.push("Não pode sublicenciar a terceiros");
     return { canDo, cannotDo };
 }
 
 export default function AddAssetPage() {
   const router = useRouter();
-    const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const userId = user?.id;
   
   const [formData, setFormData] = useState({
@@ -50,11 +37,14 @@ export default function AddAssetPage() {
 
   const [pictures, setPictures] = useState<AssetPictureInput[]>([]);
   const [licenses, setLicenses] = useState<LicenseTypeRead[]>([]);
-  const [categories, setCategories] = useState<CategoryRead[]>([]);
+  const [categoryTree, setCategoryTree] = useState<CategoryReadWithChildren[]>([]);
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // This check should be based on the auth context's loading state in a real app,
+    // but for now, this is sufficient.
     if (!isLoggedIn) {
       router.push('/login');
     }
@@ -66,11 +56,10 @@ export default function AddAssetPage() {
         setIsLoading(true);
         const [licensesData, categoriesData] = await Promise.all([
           getLicenseTypes(),
-          getCategories(),
+          getCategoriesTree(),
         ]);
         setLicenses(licensesData);
-        setCategories(categoriesData);
-        // Set default license if available
+        setCategoryTree(categoriesData);
         if (licensesData.length > 0) {
             setFormData(prev => ({ ...prev, license_type_id: licensesData[0].id }));
         }
@@ -83,11 +72,44 @@ export default function AddAssetPage() {
     fetchData();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleLicenseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, license_type_id: e.target.value }));
+  };
+
+  const handleParentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const parentId = e.target.value;
+    setSelectedParentId(parentId);
+    // When parent changes, the subcategory is reset, so the parent becomes the main category
+    setFormData(prev => ({ ...prev, category_id: parentId }));
+  };
+
+  const handleSubCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const subId = e.target.value;
+    // If user selects a subcategory, it overwrites the parent ID in the form.
+    // If they select the "default" option, it keeps the parent ID.
+    setFormData(prev => ({ ...prev, category_id: subId || selectedParentId }));
+  };
   
+  const parentCategoryOptions = useMemo(() => [
+    { value: "", label: "Selecione uma categoria" },
+    ...categoryTree.map(c => ({ value: c.id, label: c.name }))
+  ], [categoryTree]);
+
+  const subCategoryOptions = useMemo(() => {
+    if (!selectedParentId) return [];
+    const parent = categoryTree.find(c => String(c.id) === selectedParentId);
+    if (!parent?.children || parent.children.length === 0) return [];
+    return [
+      { value: parent.id, label: `Geral (${parent.name})` },
+      ...parent.children.map(child => ({ value: child.id, label: child.name }))
+    ];
+  }, [selectedParentId, categoryTree]);
+
   const selectedLicense = licenses.find(lic => lic.id === Number(formData.license_type_id));
   const licenseRules = getLicenseRules(selectedLicense);
 
@@ -99,6 +121,10 @@ export default function AddAssetPage() {
     }
     if (pictures.length === 0) {
         alert("Você precisa adicionar pelo menos uma imagem para o asset.");
+        return;
+    }
+    if (!formData.category_id) {
+        alert("Por favor, selecione uma categoria.");
         return;
     }
     setIsSubmitting(true);
@@ -163,21 +189,34 @@ export default function AddAssetPage() {
           {/* Left Column */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <FormInput name="name" label="Título do Asset" value={formData.name} onChange={handleInputChange} required />
+            
             <FormSelect
-              name="category_id"
-              label="Categorias"
-              options={[{ value: "", label: "Selecione uma categoria" }, ...categories.map(c => ({ value: c.id, label: c.name }))]}
-              value={String(formData.category_id)}
-              onChange={handleInputChange}
+              label="Categoria"
+              options={parentCategoryOptions}
+              value={String(selectedParentId)}
+              onChange={handleParentCategoryChange}
+              required
             />
+
+            {subCategoryOptions.length > 0 && (
+              <FormSelect
+                label="Subcategoria"
+                options={subCategoryOptions}
+                value={String(formData.category_id)}
+                onChange={handleSubCategoryChange}
+                required
+              />
+            )}
+
             <FormInput name="description" label="Descrição" value={formData.description} onChange={handleInputChange} multiline={true} />
             <FormInput name="price" label="Preço" type="number" value={formData.price} onChange={handleInputChange} required />
+            
             <FormSelect
               name="license_type_id"
               label="Licenciamento"
               options={licenses.map(l => ({ value: l.id, label: l.name }))}
               value={String(formData.license_type_id)}
-              onChange={handleInputChange}
+              onChange={handleLicenseChange}
               required
             />
 
