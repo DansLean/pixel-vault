@@ -15,18 +15,28 @@ const BASE_URL = "http://localhost:5000";
 
 // Helper for handling API responses
 async function handleResponse<T>(response: Response): Promise<T> {
+  // First, handle non-ok statuses (4xx, 5xx)
   if (!response.ok) {
-    // For 201 Created and 204 No Content, which might have empty bodies.
-    if (response.status === 201 || response.status === 204) {
-      // Try to parse JSON, but return an empty object if it fails,
-      // as these successful responses may not have a body.
-      return response.json().catch(() => ({}) as any);
+    try {
+      const error = await response.json();
+      console.error("API Error:", error);
+      // Try to create a meaningful error message from the server's response
+      const errorMessage = typeof error === 'object' && error !== null && 'detail' in error 
+        ? (error as any).detail 
+        : JSON.stringify(error);
+      throw new Error(errorMessage);
+    } catch (e) {
+      // If the error response itself isn't valid JSON, throw a generic error
+      throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
     }
-    const error = await response.json();
-    console.error("API Error:", error);
-    throw new Error(`API request failed with status ${response.status}`);
   }
-  // For successful responses (like 200 OK), we expect a JSON body.
+
+  // For successful responses (2xx), check for empty body
+  if (response.status === 204) { // 204 No Content
+    return {} as T; // Return an empty object as there is no body
+  }
+
+  // For other successful responses (200, 201, etc.), parse the JSON body.
   return response.json() as Promise<T>;
 }
 

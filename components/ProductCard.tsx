@@ -11,29 +11,23 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { isLoggedIn, toggleFavorite, cart, addToCart } = useAuth();
-  const [isFavorite, setIsFavorite] = useState(product.is_favorite);
-  const isInCart = cart.includes(product.id);
+  const { isLoggedIn, cart, addToCart, isFavorite, toggleFavorite, pendingFavoriteIds } = useAuth();
   const router = useRouter();
 
+  const isProductFavorite = isFavorite(product.id);
+  const isInCart = cart.includes(product.id);
+  const isFavoritePending = pendingFavoriteIds.has(product.id);
+  
   const [hovered, setHovered] = useState(false);
 
-  const handleFavoriteClick = async (e: React.MouseEvent) => {
+  const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!isLoggedIn) {
       router.push('/login');
       return;
     }
-    // Optimistic update
-    setIsFavorite(!isFavorite);
-    try {
-      await toggleFavorite(product.id, isFavorite);
-    } catch (error) {
-        // Revert on error
-        setIsFavorite(isFavorite);
-        console.error("Failed to toggle favorite", error);
-    }
+    toggleFavorite(product.id);
   };
 
   const handleCartClick = (e: React.MouseEvent) => {
@@ -183,23 +177,25 @@ export default function ProductCard({ product }: ProductCardProps) {
             {/* Heart button */}
             <button
               onClick={handleFavoriteClick}
-              title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+              disabled={isFavoritePending}
+              title={isProductFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               style={{
                 backgroundColor: "transparent",
                 border: "none",
-                cursor: "pointer",
+                cursor: isFavoritePending ? 'wait' : 'pointer',
                 padding: "4px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                transition: "transform 0.15s ease",
+                transition: "transform 0.15s ease, opacity 0.2s",
+                opacity: isFavoritePending ? 0.5 : 1,
               }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M12 21s-9-6-9-12a6 6 0 0 1 9-5.2A6 6 0 0 1 21 9c0 6-9 12-9 12z"
-                  fill={isFavorite ? "var(--color-heart)" : "none"}
-                  stroke={isFavorite ? "var(--color-heart)" : "var(--color-text-primary)"}
+                  fill={isProductFavorite ? "var(--color-heart)" : "none"}
+                  stroke={isProductFavorite ? "var(--color-heart)" : "var(--color-text-primary)"}
                   strokeWidth="2"
                   strokeLinejoin="round"
                 />

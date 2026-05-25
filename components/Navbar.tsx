@@ -7,8 +7,14 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { debounce } from "@/lib/utils";
 
 function UserAuth() {
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, user, logout, isAuthLoading } = useAuth();
   const router = useRouter();
+
+  if (isAuthLoading) {
+    // Render nothing or a placeholder on the server and initial client render
+    // to prevent hydration mismatch. A div with fixed size can prevent layout shift.
+    return <div style={{ width: '180px', height: '54px' }} />;
+  }
 
   const handleLogout = () => {
     logout();

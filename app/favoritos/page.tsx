@@ -8,24 +8,28 @@ import Navbar from "@/components/Navbar";
 import ProductGrid from "@/components/ProductGrid";
 
 export default function FavoritesPage() {
-  const { userId, isLoggedIn } = useAuth();
+    const { user, isLoggedIn, isAuthLoading } = useAuth();
+  const userId = user?.id;
   const [favoriteProducts, setFavoriteProducts] = useState<AssetFeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      // Se não estiver logado, não há favoritos para buscar
+    // Don't do anything until the auth state is confirmed from the client
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!isLoggedIn || !userId) {
+      // If not logged in after auth check, there are no favorites.
       setIsLoading(false);
       return;
     }
 
     const fetchFavorites = async () => {
-      if (!userId) return;
+      // No need to set isLoading(true) here as it's the default
       try {
-        setIsLoading(true);
-        const response = await getAssetFeed(userId);
-        const favorites = response.items.filter(item => item.is_favorite);
-        setFavoriteProducts(favorites);
+        const response = await getAssetFeed({ only_favorites: true, user_id: userId, page_size: 100 });
+        setFavoriteProducts(response.items); // Trust the API to return only favorites
       } catch (error) {
         console.error("Failed to fetch favorite products:", error);
       } finally {
@@ -34,7 +38,7 @@ export default function FavoritesPage() {
     };
 
     fetchFavorites();
-  }, [userId, isLoggedIn]);
+  }, [userId, isLoggedIn, isAuthLoading]);
 
   const renderContent = () => {
     if (isLoading) {
